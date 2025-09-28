@@ -1,0 +1,156 @@
+import pygame
+import random
+
+# 初始化
+pygame.init()
+
+# 遊戲畫面大小
+WIDTH, HEIGHT = 300, 600
+win = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("俄羅斯方塊")
+
+# 方塊大小 & 行列數
+BLOCK_SIZE = 30
+COLS = WIDTH // BLOCK_SIZE
+ROWS = HEIGHT // BLOCK_SIZE
+
+# 顏色
+BLACK = (0, 0, 0)
+GRAY = (128, 128, 128)
+COLORS = [
+    (0, 255, 255),   # I
+    (0, 0, 255),     # J
+    (255, 165, 0),   # L
+    (255, 255, 0),   # O
+    (0, 255, 0),     # S
+    (128, 0, 128),   # T
+    (255, 0, 0),     # Z
+]
+
+# 定義所有的方塊形狀（使用坐標）
+SHAPES = [
+    [[1, 1, 1, 1]],  # I
+    [[1, 0, 0], [1, 1, 1]],  # J
+    [[0, 0, 1], [1, 1, 1]],  # L
+    [[1, 1], [1, 1]],        # O
+    [[0, 1, 1], [1, 1, 0]],  # S
+    [[0, 1, 0], [1, 1, 1]],  # T
+    [[1, 1, 0], [0, 1, 1]],  # Z
+]
+
+# 產生新方塊
+def get_new_piece():
+    shape = random.choice(SHAPES)
+    color = random.choice(COLORS)
+    return {"shape": shape, "color": color, "x": COLS // 2 - len(shape[0]) // 2, "y": 0}
+
+# 旋轉
+def rotate(shape):
+    return [list(row)[::-1] for row in zip(*shape)]
+
+# 檢查碰撞
+def is_valid(piece, grid, dx=0, dy=0, rotated_shape=None):
+    shape = rotated_shape if rotated_shape else piece["shape"]
+    for y, row in enumerate(shape):
+        for x, cell in enumerate(row):
+            if cell:
+                new_x = piece["x"] + x + dx
+                new_y = piece["y"] + y + dy
+                if new_x < 0 or new_x >= COLS or new_y >= ROWS:
+                    return False
+                if new_y >= 0 and grid[new_y][new_x] != BLACK:
+                    return False
+    return True
+
+# 固定方塊到網格
+def place_piece(piece, grid):
+    for y, row in enumerate(piece["shape"]):
+        for x, cell in enumerate(row):
+            if cell and piece["y"] + y >= 0:
+                grid[piece["y"] + y][piece["x"] + x] = piece["color"]
+
+# 消除滿行
+def clear_lines(grid):
+    new_grid = [row for row in grid if any(cell == BLACK for cell in row)]
+    lines_cleared = ROWS - len(new_grid)
+    for _ in range(lines_cleared):
+        new_grid.insert(0, [BLACK] * COLS)
+    return new_grid, lines_cleared
+
+# 建立空網格
+def create_grid():
+    return [[BLACK for _ in range(COLS)] for _ in range(ROWS)]
+
+# 繪製畫面
+def draw_window(grid, piece):
+    win.fill(BLACK)
+    for y in range(ROWS):
+        for x in range(COLS):
+            pygame.draw.rect(win, grid[y][x], (x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
+            pygame.draw.rect(win, GRAY, (x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE), 1)
+
+    if piece:
+        for y, row in enumerate(piece["shape"]):
+            for x, cell in enumerate(row):
+                if cell:
+                    px = piece["x"] + x
+                    py = piece["y"] + y
+                    if py >= 0:
+                        pygame.draw.rect(win, piece["color"],
+                                         (px * BLOCK_SIZE, py * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
+                        pygame.draw.rect(win, GRAY,
+                                         (px * BLOCK_SIZE, py * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE), 1)
+
+    pygame.display.update()
+
+# 主程式
+def main():
+    clock = pygame.time.Clock()
+    grid = create_grid()
+    piece = get_new_piece()
+    fall_time = 0
+    fall_speed = 0.5  # 秒數
+
+    running = True
+    while running:
+        dt = clock.tick(60) / 1000  # 秒
+        fall_time += dt
+
+        # 自動下落
+        if fall_time >= fall_speed:
+            fall_time = 0
+            if is_valid(piece, grid, dy=1):
+                piece["y"] += 1
+            else:
+                place_piece(piece, grid)
+                grid, _ = clear_lines(grid)
+                piece = get_new_piece()
+                if not is_valid(piece, grid):
+                    running = False  # 遊戲結束
+
+        # 控制
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT] and is_valid(piece, grid, dx=-1):
+            piece["x"] -= 1
+        if keys[pygame.K_RIGHT] and is_valid(piece, grid, dx=1):
+            piece["x"] += 1
+        if keys[pygame.K_DOWN] and is_valid(piece, grid, dy=1):
+            piece["y"] += 1
+        if keys[pygame.K_UP]:
+            rotated = rotate(piece["shape"])
+            if is_valid(piece, grid, rotated_shape=rotated):
+                piece["shape"] = rotated
+
+        draw_window(grid, piece)
+
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()
+git remote add origin https://github.com/s113130/-.git
+ git branch -M main 
+git push -u origin main
